@@ -2,6 +2,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using NUnit.Framework;
 using System;
+using System.Linq;
 
 namespace Tests
 {
@@ -12,24 +13,21 @@ namespace Tests
         [Test]
         public void Test1()
         {
-            for (int i = 0; i < 100; i++)
-            {
-                cache.Set($"kek{i}", new DisposableClass("lol"));
-            }
+            Enumerable
+                .Range(0, 10000)
+                .AsParallel()
+                .ForAll(i =>
+                    cache.Set($"kek{i}", new DisposableClass("lol"))
+                );
 
-            using (var d = cache.Get<DisposableClass>("kek99"))
+            using (var d = cache.Get<DisposableClass>("kek9999"))
             {
                 Assert.NotNull(d);
                 Assert.AreEqual(d.Name, "lol");
             }
             
             GC.Collect(0);
-            GC.Collect(1);
-            GC.Collect(2);
-            GC.Collect();
             Assert.False(cache.TryGetValue<DisposableClass>("kek1", out _));
-
-            Assert.Pass();
         }
     }
 
