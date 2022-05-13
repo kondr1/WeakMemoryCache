@@ -1,0 +1,36 @@
+name: publish to nuget
+on:
+  push:
+    branches:
+      - master # Default release branch, may also be named 'master' or 'develop'
+jobs:
+  publish:
+    name: build, pack & publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with: 
+          persist-credentials: false
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 6.0.x
+      # Publish
+      - uses: actions/checkout@master
+      - run: |
+          echo "::group::Nuget restore"
+          dotnet restore WeakMemoryCache/WeakMemoryCache.csproj
+          echo "::endgroup::"
+          echo "::group::MsBuild"
+          dotnet build WeakMemoryCache/WeakMemoryCache.csproj \
+            --configuration Release \
+            -p:ContinuousIntegrationBuild=true -v:m
+          echo "::endgroup::"
+          echo "::group::NuGet push"
+          for f in `find . -name "WeakMemoryCache*nupkg"`
+          do
+            echo $f
+            dotnet nuget push $f -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
+          done
+          echo "::endgroup::"
+          
