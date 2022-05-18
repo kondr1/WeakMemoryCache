@@ -4,33 +4,40 @@ on:
     branches:
       - master # Default release branch, may also be named 'master' or 'develop'
 jobs:
-  publish:
-    name: build, pack & publish
+  build:
+    name: build, pack & 
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with: 
           persist-credentials: false
-      - name: Setup dotnet
-        uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: 6.0.x
-      # Publish
-      - uses: actions/checkout@master
-      - run: |
-          echo "::group::Nuget restore"
-          dotnet restore WeakMemoryCache/WeakMemoryCache.csproj
-          echo "::endgroup::"
-          echo "::group::MsBuild"
+      - name: restore
+        run: dotnet restore WeakMemoryCache/WeakMemoryCache.csproj
+      - name: build
+        run: |
           dotnet build WeakMemoryCache/WeakMemoryCache.csproj \
             --configuration Release \
+            --no-restore \
             -p:ContinuousIntegrationBuild=true -v:m
-          echo "::endgroup::"
-          echo "::group::NuGet push"
-          for f in `find . -name "WeakMemoryCache*nupkg"`
-          do
-            echo $f
-            dotnet nuget push $f -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
-          done
-          echo "::endgroup::"
+      - name: Test
+        run: dotnet test --no-restore --verbosity normal
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: nugets
+          path: ./WeakMemoryCache/bin/Release/
+  publish:
+    name: nuget push
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    needs: build
+    steps:
+      - name: Download math result for job 1
+        uses: actions/download-artifact@v3
+        with:
+          name: nugets
+      - run: ls
+
           
